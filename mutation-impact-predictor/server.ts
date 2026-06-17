@@ -641,7 +641,11 @@ app.get("*", (req, res) => {
   }
 });
 
-const PORT = 3000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Mutation Impact Predictor server available on port ${PORT}`);
-});
+const PORT = process.env.PORT || 3000;
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Mutation Impact Predictor server available on port ${PORT}`);
+  });
+}
+
+export default app;
