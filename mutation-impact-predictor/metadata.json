@@ -1,0 +1,6 @@
+{
+  "name": "Mutation Impact Predictor",
+  "description": "An AI-powered application that predicts the pathogenicity and structural impact of gene mutations (TP53, BRCA1, EGFR) utilizing sequence analysis, machine learning metrics, and interactive 3D protein visualizations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
