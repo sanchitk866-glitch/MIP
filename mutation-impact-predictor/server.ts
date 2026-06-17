@@ -307,6 +307,55 @@ Keep it structured, mathematically relevant, and scientific. Use sophisticated m
   }
 });
 
+// NCBI PubMed Fetcher Endpoint
+app.get("/api/pubmed", async (req: Request, res: Response) => {
+  try {
+    const { gene, mutation } = req.query;
+    if (!gene) {
+       res.status(400).json({ error: "Missing gene parameter" });
+       return;
+    }
+
+    const term = mutation ? `${gene} ${mutation}` : (gene as string);
+    const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(term)}&retmode=json&retmax=5`;
+    
+    const searchResponse = await fetch(searchUrl);
+    if (!searchResponse.ok) {
+      throw new Error(`Failed to search PubMed: ${searchResponse.statusText}`);
+    }
+    const searchData: any = await searchResponse.json();
+    const idList = searchData.esearchresult?.idlist || [];
+
+    if (idList.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    const summaryUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${idList.join(",")}&retmode=json`;
+    const summaryResponse = await fetch(summaryUrl);
+    if (!summaryResponse.ok) {
+      throw new Error(`Failed to fetch PubMed summaries: ${summaryResponse.statusText}`);
+    }
+    const summaryData: any = await summaryResponse.json();
+    
+    const results = idList.map((id: string) => {
+      const doc = summaryData.result?.[id];
+      return {
+        pmid: id,
+        title: doc?.title || "No Title Available",
+        authors: doc?.authors?.map((a: any) => a.name).join(", ") || doc?.sortauthor || "Unknown Authors",
+        source: doc?.source || "PubMed",
+        pubDate: doc?.pubdate || "Unknown Date",
+      };
+    });
+
+    res.json(results);
+  } catch (error: any) {
+    console.error("PubMed API error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Custom Clinical Report Generator Endpoint
 app.post("/api/report", (req: Request, res: Response) => {
   try {

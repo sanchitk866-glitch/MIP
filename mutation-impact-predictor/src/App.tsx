@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import Hls from "hls.js";
 import { 
   Dna, 
   Sparkles, 
@@ -65,9 +67,239 @@ export function calculateDeltaDeltaG(isPathogenic: boolean, features?: any): num
   }
 }
 
+function BackgroundVideo() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const streamUrl = "https://stream.mux.com/kimF2ha9zLrX64H00UgLGPflCzNtl1T0215MlAmeOztv8.m3u8";
+
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = streamUrl;
+    } else if (Hls.isSupported()) {
+      const hls = new Hls();
+      hls.loadSource(streamUrl);
+      hls.attachMedia(video);
+      return () => {
+        hls.destroy();
+      };
+    }
+  }, []);
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="w-full h-full object-cover opacity-60"
+      />
+    </div>
+  );
+}
+
+function Navbar({ viewMode, setViewMode }: { viewMode: "landing" | "dashboard"; setViewMode: (mode: "landing" | "dashboard") => void }) {
+  return (
+    <motion.nav 
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      className="relative z-20 px-6 py-6 w-full"
+    >
+      <div className="liquid-glass rounded-full px-6 py-3 flex items-center justify-between max-w-5xl mx-auto">
+        {/* Left Hand Segment */}
+        <div className="flex items-center gap-8">
+          {/* Logo Branding */}
+          <button 
+            onClick={() => setViewMode("landing")}
+            className="flex items-center gap-2 cursor-pointer focus:outline-none"
+          >
+            <Dna className="w-5 h-5 text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.6)] animate-pulse" />
+            <span className="text-white font-semibold tracking-tight text-md">MIP Engine</span>
+          </button>
+
+          {/* Navigation links */}
+          <div className="hidden md:flex items-center gap-8">
+            <button 
+              onClick={() => setViewMode("dashboard")}
+              className={`text-sm font-medium transition-colors duration-300 cursor-pointer ${
+                viewMode === "dashboard" ? "text-white" : "text-white/70 hover:text-white"
+              }`}
+            >
+              Predictor Core
+            </button>
+            <button 
+              onClick={() => {
+                setViewMode("dashboard");
+                // Navigate to a mock or active tab
+              }}
+              className="text-white/70 hover:text-white text-sm font-medium transition-colors duration-300 cursor-pointer"
+            >
+              Structural Docs
+            </button>
+            <button 
+              onClick={() => {
+                setViewMode("dashboard");
+              }}
+              className="text-white/70 hover:text-white text-sm font-medium transition-colors duration-300 cursor-pointer"
+            >
+              Research Vault
+            </button>
+          </div>
+        </div>
+
+        {/* Right Hand Segment */}
+        <div className="flex items-center gap-4">
+          <button 
+            type="button"
+            onClick={() => alert("Academic institutional authentication portal active.")}
+            className="text-white/80 hover:text-white transition-colors text-sm font-medium cursor-pointer bg-transparent border-none"
+          >
+            Academic Login
+          </button>
+          <button 
+            type="button"
+            onClick={() => setViewMode("dashboard")}
+            className="liquid-glass rounded-full px-5 py-2 text-sm font-medium text-white hover:bg-white/[0.05] transition-all cursor-pointer"
+          >
+            Launch Pipeline
+          </button>
+        </div>
+      </div>
+    </motion.nav>
+  );
+}
+
+function HeroSection({
+  emailInput,
+  setEmailInput,
+  isEmailActive,
+  setIsEmailActive,
+  isEmailSubmitted,
+  handleEmailSubmit,
+  typewriterText,
+  setViewMode
+}: {
+  emailInput: string;
+  setEmailInput: (val: string) => void;
+  isEmailActive: boolean;
+  setIsEmailActive: (val: boolean) => void;
+  isEmailSubmitted: boolean;
+  handleEmailSubmit: (e: React.FormEvent) => void;
+  typewriterText: string;
+  setViewMode: (mode: "landing" | "dashboard") => void;
+}) {
+  return (
+    <section className="relative flex-1 flex flex-col items-center justify-center px-6">
+      <div className="relative z-10 text-center max-w-5xl mx-auto flex flex-col items-center justify-center w-full gap-10">
+        
+        {/* Tagline */}
+        <motion.p 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="text-white/80 text-[10px] md:text-[11px] font-semibold tracking-[0.25em] uppercase mb-2"
+        >
+          NEXT-GENERATION PREDICTIVE VARIANT INTELLIGENCE
+        </motion.p>
+
+        {/* Main Editorial Heading */}
+        <motion.h1 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+          style={{ fontFamily: "'Instrument Serif', serif" }}
+          className="text-4xl md:text-[68px] font-medium tracking-[-0.01em] leading-[1.05] mb-4 bg-gradient-to-b from-white via-white/95 to-white/75 bg-clip-text text-transparent max-w-4xl"
+        >
+          Predicting clinical variant pathogenicity with structural deep learning.
+        </motion.h1>
+
+        {/* Dynamic CTA Area Module */}
+        <motion.div 
+          className="min-h-[55px] mt-2 flex justify-center items-center w-full"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+        >
+          <AnimatePresence mode="wait">
+            {!isEmailActive ? (
+              <motion.button
+                key="default-btn"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setIsEmailActive(true)}
+                className="px-10 py-3 text-[14px] font-medium border border-white/10 rounded-full hover:border-blue-500/40 hover:bg-white/[0.02] transition-all duration-300 text-white/90 backdrop-blur-sm cursor-pointer animate-none"
+              >
+                Request Clinical Beta Access
+              </motion.button>
+            ) : (
+              <motion.form
+                key="email-form"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                onSubmit={handleEmailSubmit}
+                className="flex items-center gap-2 pl-5 pr-1.5 py-1.5 text-[14px] font-medium border border-white/20 rounded-full bg-white/[0.02] backdrop-blur-sm w-full max-w-[340px] focus-within:border-blue-500/40 transition-colors duration-300"
+              >
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  placeholder={typewriterText}
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  className="bg-transparent border-none text-white focus:outline-none flex-1 text-sm font-sans placeholder-white/40"
+                  disabled={isEmailSubmitted}
+                />
+                <button
+                  type="submit"
+                  disabled={isEmailSubmitted}
+                  className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center cursor-pointer hover:bg-white/90 active:scale-95 transition-all shrink-0 border-none"
+                >
+                  {isEmailSubmitted ? (
+                    <CheckCircle className="w-4 h-4 text-emerald-600 animate-pulse" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-black" />
+                  )}
+                </button>
+              </motion.form>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Primary Action Link Subtext */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          onClick={() => setViewMode("dashboard")}
+          className="text-white/60 hover:text-blue-400 transition-colors duration-300 text-[12px] font-medium tracking-wide cursor-pointer flex items-center gap-1.5"
+        >
+          <span>View Model Benchmarks & PDB Architecture</span>
+          <ChevronRight className="w-3.5 h-3.5" />
+        </motion.div>
+
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
   // Navigation
+  const [viewMode, setViewMode] = useState<"landing" | "dashboard">("landing");
   const [activeTab, setActiveTab] = useState<"dashboard" | "aligner" | "analyzer" | "database">("dashboard");
+
+  // Hero landing page states
+  const [emailInput, setEmailInput] = useState<string>("");
+  const [isEmailActive, setIsEmailActive] = useState<boolean>(false);
+  const [isEmailSubmitted, setIsEmailSubmitted] = useState<boolean>(false);
+  const [typewriterText, setTypewriterText] = useState<string>("");
 
   // Selection state
   const [selectedGeneId, setSelectedGeneId] = useState<string>("TP53");
@@ -77,6 +309,9 @@ export default function App() {
   const [customMutation, setCustomMutation] = useState<string>("R175H");
   const [isPredicting, setIsPredicting] = useState<boolean>(false);
   const [predictionResult, setPredictionResult] = useState<PredictionResult | null>(null);
+  const activeResidue = predictionResult 
+    ? predictionResult.residueIndex 
+    : (selectedGene?.commonMutations[0]?.residue || 175);
   const [selectedReportSections, setSelectedReportSections] = useState<string[]>([
     "header",
     "metrics",
@@ -165,6 +400,22 @@ export default function App() {
   const wtViewerInstance = useRef<any>(null);
   const mutViewerInstance = useRef<any>(null);
 
+  // Custom states for representation style, export menu, PubMed fetching and sequence viewer refs
+  const [useSurface, setUseSurface] = useState<boolean>(false);
+  const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
+  const [pubmedArticles, setPubmedArticles] = useState<Array<{
+    pmid: string;
+    title: string;
+    authors: string;
+    source: string;
+    pubDate: string;
+  }>>([]);
+  const [isPubmedLoading, setIsPubmedLoading] = useState<boolean>(false);
+  const [pubmedError, setPubmedError] = useState<string | null>(null);
+
+  const sequenceScrollContainerRef = useRef<HTMLDivElement>(null);
+  const selectedResidueRef = useRef<HTMLButtonElement>(null);
+
   // Set initial alignment and analyzer sequences when gene changes
   useEffect(() => {
     if (selectedGene) {
@@ -182,6 +433,55 @@ export default function App() {
       }
     }
   }, [selectedGeneId]);
+
+  // Auto-scroll selected residue in sequence viewer into view
+  useEffect(() => {
+    if (selectedResidueRef.current) {
+      selectedResidueRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center"
+      });
+    }
+  }, [activeResidue, selectedGeneId]);
+
+  // Fetch PubMed articles when gene or mutation changes
+  useEffect(() => {
+    const fetchPubMed = async () => {
+      const activeMutation = predictionResult ? predictionResult.mutation : customMutation;
+      if (!selectedGeneId) return;
+      
+      setIsPubmedLoading(true);
+      setPubmedError(null);
+      try {
+        const url = `/api/pubmed?gene=${selectedGeneId}&mutation=${encodeURIComponent(activeMutation)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Failed to load PubMed articles");
+        const data = await res.json();
+        
+        if (data.length === 0) {
+          // Fallback: search just for gene
+          const fallbackUrl = `/api/pubmed?gene=${selectedGeneId}`;
+          const fallbackRes = await fetch(fallbackUrl);
+          if (fallbackRes.ok) {
+            const fallbackData = await fallbackRes.json();
+            setPubmedArticles(fallbackData);
+          } else {
+            setPubmedArticles([]);
+          }
+        } else {
+          setPubmedArticles(data);
+        }
+      } catch (err: any) {
+        console.error("Error fetching PubMed:", err);
+        setPubmedError(err.message);
+      } finally {
+        setIsPubmedLoading(false);
+      }
+    };
+
+    fetchPubMed();
+  }, [selectedGeneId, predictionResult?.mutation, customMutation]);
 
   // Load 3Dmol.js script once dynamically
   useEffect(() => {
@@ -246,7 +546,11 @@ export default function App() {
           if (!active) return;
           try {
             // Style wildtype structure - stable emerald theme
-            wtViewer.setStyle({}, { cartoon: { color: "#115e59", thickness: 0.4 } });
+            if (useSurface) {
+              wtViewer.addSurface(window.$3Dmol.SurfaceType.VDW, { opacity: 0.6, color: "#115e59" }, {}, {});
+            } else {
+              wtViewer.setStyle({}, { cartoon: { color: "#115e59", thickness: 0.4 } });
+            }
             wtViewer.setStyle({ residue: activeResidue }, { stick: { color: "#10b981", radius: 0.6 }, sphere: { color: "#10b981", radius: 1.2 } });
             
             wtViewer.addResLabels({ residue: activeResidue }, {
@@ -324,7 +628,11 @@ export default function App() {
           if (!active) return;
           setIsStructureLoading(false);
           try {
-            mutViewer.setStyle({}, { cartoon: { color: "spectrum", thickness: 0.4 } });
+            if (useSurface) {
+              mutViewer.addSurface(window.$3Dmol.SurfaceType.VDW, { opacity: 0.6, colorscheme: "spectrum" }, {}, {});
+            } else {
+              mutViewer.setStyle({}, { cartoon: { color: "spectrum", thickness: 0.4 } });
+            }
             mutViewer.setStyle({ residue: activeResidue }, { stick: { color: "#ef4444", radius: 0.6 }, sphere: { color: "#ef4444", radius: 1.4 } });
             
             mutViewer.addResLabels({ residue: activeResidue }, {
@@ -466,7 +774,11 @@ export default function App() {
           if (!active) return;
           setIsStructureLoading(false);
           try {
-            viewer.setStyle({}, { cartoon: { color: "spectrum", thickness: 0.4 } });
+            if (useSurface) {
+              viewer.addSurface(window.$3Dmol.SurfaceType.VDW, { opacity: 0.6, colorscheme: "spectrum" }, {}, {});
+            } else {
+              viewer.setStyle({}, { cartoon: { color: "spectrum", thickness: 0.4 } });
+            }
             
             viewer.addResLabels({ residue: activeResidue }, {
               fontSize: 10,
@@ -643,7 +955,7 @@ export default function App() {
       active = false;
       animationFrames.forEach(id => cancelAnimationFrame(id));
     };
-  }, [molScriptLoaded, selectedGeneId, predictionResult, activeTab, showDistances, measurementMode, neighborLimit, maxDistance, isSplitView]);
+  }, [molScriptLoaded, selectedGeneId, predictionResult, activeTab, showDistances, measurementMode, neighborLimit, maxDistance, isSplitView, useSurface]);
 
   // Handle Predict Action
   const handlePredict = async () => {
@@ -699,6 +1011,147 @@ export default function App() {
     } finally {
       setIsPredicting(false);
     }
+  };
+
+  // Report export handlers (HTML, PDF, JSON)
+  const handleGenerateReport = async (format: "html" | "pdf") => {
+    if (!predictionResult) return;
+    setIsGeneratingReport(true);
+    setReportProgress(5);
+    setReportStatus("Initializing clinical report...");
+    
+    let progressVal = 5;
+    const interval = setInterval(() => {
+      if (progressVal < 90) {
+        progressVal += Math.floor(Math.random() * 8) + 4;
+        if (progressVal >= 90) progressVal = 92;
+        setReportProgress(progressVal);
+        
+        if (progressVal < 30) {
+          setReportStatus("Retrieving clinical database annotations...");
+        } else if (progressVal < 55) {
+          setReportStatus("Calculating structural motif disruptions...");
+        } else if (progressVal < 78) {
+          setReportStatus("Compiling mutation-specific literature guidelines...");
+        } else {
+          setReportStatus("Generating print-ready layout...");
+        }
+      }
+    }, 200);
+
+    try {
+      const response = await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          geneId: selectedGeneId,
+          mutation: predictionResult.mutation,
+          probability: predictionResult.probability,
+          clinVarId: predictionResult.clinVarId || "N/A",
+          clinVarStatus: predictionResult.clinVarStatus,
+          features: predictionResult.features,
+          sections: selectedReportSections
+        })
+      });
+      
+      clearInterval(interval);
+      if (!response.ok) throw new Error("Report generation endpoint failed.");
+      
+      setReportProgress(100);
+      setReportStatus(format === "pdf" ? "Report compiled! Opening PDF printer..." : "Report compiled! Opening print page...");
+      
+      const data = await response.json();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const printable = window.open("", "_blank");
+      if (printable) {
+        printable.document.write(`
+          <!doctype html>
+          <html>
+            <head>
+              <title>MIP Clinical Evaluation Report - ${selectedGeneId}</title>
+              <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+              <style>
+                @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+                body {
+                  font-family: 'Space Grotesk', sans-serif;
+                  background-color: #020308;
+                }
+                .font-mono {
+                  font-family: 'JetBrains Mono', monospace;
+                }
+                @media print {
+                  body {
+                    background-color: white !important;
+                    color: black !important;
+                  }
+                  .no-print {
+                    display: none !important;
+                  }
+                }
+              </style>
+            </head>
+            <body class="p-4 md:p-8 text-[#e2e8f0]">
+              <div class="max-w-3xl mx-auto border border-white/10 p-6 md:p-8 bg-[#090b14] rounded-2xl shadow-2xl space-y-6 relative overflow-hidden">
+                <div class="absolute -top-12 -right-12 w-24 h-24 bg-blue-500/20 rounded-full blur-2xl"></div>
+                <div class="absolute -bottom-12 -left-12 w-24 h-24 bg-purple-500/15 rounded-full blur-2xl"></div>
+                
+                ${data.html}
+                
+                <div class="border-t border-white/10 pt-4 mt-6 flex justify-between items-center text-[9px] text-white/30 font-mono">
+                  <p>Computational Mutation Impact Predictor (MIP v2.1)</p>
+                  <p>© ${new Date().getFullYear()} Clinical Laboratory Suite</p>
+                </div>
+              </div>
+              ${format === "pdf" ? `
+                <script>
+                  window.onload = () => {
+                    setTimeout(() => {
+                      window.print();
+                    }, 500);
+                  };
+                </script>
+              ` : ""}
+            </body>
+          </html>
+        `);
+        printable.document.close();
+      }
+    } catch (err: any) {
+      clearInterval(interval);
+      alert("Diagnostic reporting failed: " + err.message);
+    } finally {
+      setIsGeneratingReport(false);
+      setReportProgress(0);
+      setReportStatus("");
+    }
+  };
+
+  const handleExportJson = () => {
+    if (!predictionResult) return;
+    const reportData = {
+      geneId: selectedGeneId,
+      mutation: predictionResult.mutation,
+      probability: predictionResult.probability,
+      clinVarId: predictionResult.clinVarId || "N/A",
+      clinVarStatus: predictionResult.clinVarStatus,
+      features: predictionResult.features,
+      recommendedTherapies: predictionResult.recommendedTherapies || [],
+      affectedMotifs: predictionResult.affectedMotifs || [],
+      pubmedArticles: pubmedArticles || [],
+      reportSections: selectedReportSections,
+      softwareVersion: "MIP v2.1",
+      timestamp: new Date().toISOString()
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportData, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `MIP_Clinical_Report_${selectedGeneId}_${predictionResult.mutation}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
   };
 
   // Perform Sequence Alignment Action
@@ -797,6 +1250,62 @@ export default function App() {
     }
   }, [selectedGeneId]);
 
+  // Typewriter effect logic
+  useEffect(() => {
+    if (viewMode !== "landing") return;
+    
+    const targetText = isEmailSubmitted 
+      ? "Credentials saved. Verification pipeline dispatched."
+      : "Enter institutional email for beta pipeline access...";
+      
+    setTypewriterText("");
+    let currentIdx = 0;
+    
+    const interval = setInterval(() => {
+      if (currentIdx < targetText.length) {
+        setTypewriterText(targetText.slice(0, currentIdx + 1));
+        currentIdx++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 60);
+    
+    return () => clearInterval(interval);
+  }, [viewMode, isEmailSubmitted]);
+
+  // Form submission handler
+  const handleEmailSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailInput.trim()) return;
+    
+    setIsEmailSubmitted(true);
+    
+    setTimeout(() => {
+      setIsEmailSubmitted(false);
+      setIsEmailActive(false);
+      setEmailInput("");
+    }, 4000);
+  };
+
+  if (viewMode === "landing") {
+    return (
+      <main className="relative bg-black h-screen w-screen flex flex-col overflow-hidden selection:bg-blue-500 selection:text-white shrink-0">
+        <BackgroundVideo />
+        <Navbar viewMode={viewMode} setViewMode={setViewMode} />
+        <HeroSection
+          emailInput={emailInput}
+          setEmailInput={setEmailInput}
+          isEmailActive={isEmailActive}
+          setIsEmailActive={setIsEmailActive}
+          isEmailSubmitted={isEmailSubmitted}
+          handleEmailSubmit={handleEmailSubmit}
+          typewriterText={typewriterText}
+          setViewMode={setViewMode}
+        />
+      </main>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#020308] text-[#e2e8f0] font-sans antialiased selection:bg-blue-500/30">
       
@@ -810,7 +1319,12 @@ export default function App() {
         {/* Header Section */}
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-5 border-b border-white/10 gap-4">
           
-          <div className="flex items-center gap-3">
+          <button 
+            type="button"
+            onClick={() => setViewMode("landing")}
+            className="flex items-center gap-3 cursor-pointer text-left focus:outline-none bg-transparent border-none"
+            title="Return to Landing Page"
+          >
             <div className="w-11 h-11 bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20 ring-1 ring-white/15">
               <Dna className="w-6 h-6 text-white animate-[pulse_3s_infinite]" />
             </div>
@@ -822,7 +1336,7 @@ export default function App() {
               </div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 font-semibold mt-0.5">Machine Learning Mutation Impact Predictor</p>
             </div>
-          </div>
+          </button>
 
           {/* Navigation Links with Glassmorphic pill */}
           <nav className="flex bg-white/5 border border-white/10 rounded-full p-1 self-stretch sm:self-auto justify-around">
@@ -1241,6 +1755,20 @@ export default function App() {
                                   </div>
                                 )}
 
+                                {/* Style Representation Toggle */}
+                                <div className="space-y-1 pt-1.5 border-t border-white/10">
+                                  <label className="text-[9px] uppercase tracking-wider text-white/50 font-bold block mb-1">Viewer Style</label>
+                                  <label className="flex items-center gap-2 text-[10px] font-medium font-mono text-white/80 hover:text-white cursor-pointer select-none">
+                                    <input
+                                      type="checkbox"
+                                      checked={useSurface}
+                                      onChange={(e) => setUseSurface(e.target.checked)}
+                                      className="rounded bg-black/50 border-white/20 text-blue-500 focus:ring-0 w-3.5 h-3.5 cursor-pointer accent-blue-500"
+                                    />
+                                    <span>Render Molecular Surface</span>
+                                  </label>
+                                </div>
+
                                 {/* Dynamic list of computed neighbors */}
                                 <div className="space-y-1 pt-1.5 border-t border-white/5">
                                   <span className="text-[9px] uppercase tracking-wider text-white/40 font-bold">Calculated Neighbors</span>
@@ -1263,6 +1791,47 @@ export default function App() {
                         )}
                       </>
                     )}
+                  </div>
+
+                  {/* Sequence Viewer Overlay */}
+                  <div className="bg-black/80 border-t border-white/10 px-4 py-2.5 flex flex-col gap-1.5 backdrop-blur-md">
+                    <div className="flex justify-between items-center text-[10px] uppercase font-bold text-white/50 tracking-wider">
+                      <span className="flex items-center gap-1">
+                        <Activity className="w-3.5 h-3.5 text-blue-400" /> Protein Sequence Viewer ({selectedGene?.wildtypeProteinSeq?.length || 0} AAs)
+                      </span>
+                      <span className="text-blue-300 font-mono">Selected Residue: {selectedGene?.wildtypeProteinSeq ? (selectedGene.wildtypeProteinSeq[activeResidue - 1] || "") : ""}{activeResidue}</span>
+                    </div>
+                    <div className="flex gap-1 overflow-x-auto py-1.5 scroll-smooth custom-scrollbar" ref={sequenceScrollContainerRef}>
+                      {selectedGene?.wildtypeProteinSeq?.split("").map((aa, idx) => {
+                        const resNum = idx + 1;
+                        const isSelected = resNum === activeResidue;
+                        return (
+                          <button
+                            key={idx}
+                            ref={isSelected ? selectedResidueRef : null}
+                            onClick={() => {
+                              // Find if there is a common mutation for this residue in selectedGene
+                              const commonMut = selectedGene.commonMutations.find(m => m.residue === resNum);
+                              if (commonMut) {
+                                setCustomMutation(commonMut.mutation);
+                              } else {
+                                // Default mutation guess
+                                const defaultMutAA = aa === "A" ? "G" : "A";
+                                setCustomMutation(`${aa}${resNum}${defaultMutAA}`);
+                              }
+                            }}
+                            className={`flex flex-col items-center justify-center shrink-0 w-8 h-10 rounded border text-xs font-mono transition-all duration-200 cursor-pointer ${
+                              isSelected 
+                                ? "bg-rose-500/20 border-rose-500 text-rose-300 shadow-[0_0_8px_rgba(244,63,94,0.4)] font-bold scale-[1.03]" 
+                                : "bg-white/5 border-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                            }`}
+                          >
+                            <span className="text-[8px] text-white/40 leading-none mb-1">{resNum}</span>
+                            <span className="text-sm font-black leading-none">{aa}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Molecular Metadata Bottom Strip */}
@@ -1485,116 +2054,89 @@ export default function App() {
 
                   {/* Generate report button */}
                   <div className="mt-5 space-y-3">
-                    <button 
-                      disabled={isGeneratingReport}
-                      onClick={async () => {
-                        if (!predictionResult) return;
-                        setIsGeneratingReport(true);
-                        setReportProgress(5);
-                        setReportStatus("Initializing clinical report...");
-                        
-                        let progressVal = 5;
-                        const interval = setInterval(() => {
-                          if (progressVal < 90) {
-                            progressVal += Math.floor(Math.random() * 8) + 4;
-                            if (progressVal >= 90) progressVal = 92;
-                            setReportProgress(progressVal);
-                            
-                            if (progressVal < 30) {
-                              setReportStatus("Retrieving clinical database annotations...");
-                            } else if (progressVal < 55) {
-                              setReportStatus("Calculating structural motif disruptions...");
-                            } else if (progressVal < 78) {
-                              setReportStatus("Compiling mutation-specific literature guidelines...");
-                            } else {
-                              setReportStatus("Generating print-ready HTML layouts...");
-                            }
-                          }
-                        }, 200);
+                    {/* Generate report button with Export dropdown menu */}
+                    <div className="relative">
+                      <div className="flex rounded-xl overflow-hidden shadow-lg border border-white/10 bg-black/20">
+                        <button 
+                          disabled={isGeneratingReport || !predictionResult}
+                          onClick={async () => {
+                            await handleGenerateReport("html");
+                          }}
+                          className={`flex-1 py-3 px-4 font-bold text-xs uppercase tracking-wider text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                            isGeneratingReport 
+                              ? 'bg-indigo-950/80 text-indigo-300 cursor-wait' 
+                              : (!predictionResult ? 'bg-white/5 text-white/30 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.99]')
+                          }`}
+                        >
+                          {isGeneratingReport ? (
+                            <>
+                              <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" /> Compiling...
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="w-4 h-4" /> Generate HTML Report
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!predictionResult}
+                          onClick={() => setShowExportMenu(!showExportMenu)}
+                          className={`py-3 px-3 bg-indigo-700 hover:bg-indigo-600 border-l border-white/10 text-white transition-all flex items-center justify-center cursor-pointer ${!predictionResult ? 'bg-white/5 text-white/30 cursor-not-allowed opacity-50' : ''}`}
+                          title="Export options"
+                        >
+                          <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${showExportMenu ? 'rotate-90' : ''}`} />
+                        </button>
+                      </div>
 
-                        try {
-                          const response = await fetch("/api/report", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              geneId: selectedGeneId,
-                              mutation: predictionResult.mutation,
-                              probability: predictionResult.probability,
-                              clinVarId: predictionResult.clinVarId || "N/A",
-                              clinVarStatus: predictionResult.clinVarStatus,
-                              features: predictionResult.features,
-                              sections: selectedReportSections
-                            })
-                          });
-                          
-                          clearInterval(interval);
-                          if (!response.ok) throw new Error("Report generation endpoint failed.");
-                          
-                          setReportProgress(100);
-                          setReportStatus("Report compiled! Opening print page...");
-                          
-                          const data = await response.json();
-                          
-                          // Elegant brief latency overlay to ensure progress completeness visibility
-                          await new Promise(resolve => setTimeout(resolve, 500));
-                          
-                          const printable = window.open("", "_blank");
-                          if (printable) {
-                            printable.document.write(`
-                              <!doctype html>
-                              <html>
-                                <head>
-                                  <title>MIP Clinical Evaluation Report - ${selectedGeneId}</title>
-                                  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-                                  <style>
-                                    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
-                                    body {
-                                      font-family: 'Space Grotesk', sans-serif;
-                                      background-color: #020308;
-                                    }
-                                    .font-mono {
-                                      font-family: 'JetBrains Mono', monospace;
-                                    }
-                                  </style>
-                                </head>
-                                <body class="p-4 md:p-8 text-[#e2e8f0]">
-                                  <div class="max-w-3xl mx-auto border border-white/10 p-6 md:p-8 bg-[#090b14] rounded-2xl shadow-2xl space-y-6 relative overflow-hidden">
-                                    <div class="absolute -top-12 -right-12 w-24 h-24 bg-blue-500/20 rounded-full blur-2xl"></div>
-                                    <div class="absolute -bottom-12 -left-12 w-24 h-24 bg-purple-500/15 rounded-full blur-2xl"></div>
-                                    
-                                    ${data.html}
-                                    
-                                    <div class="border-t border-white/10 pt-4 mt-6 flex justify-between items-center text-[9px] text-white/30 font-mono">
-                                      <p>Computational Mutation Impact Predictor (MIP v2.1)</p>
-                                      <p>© ${new Date().getFullYear()} Clinical Laboratory Suite</p>
-                                    </div>
-                                  </div>
-                                </body>
-                              </html>
-                            `);
-                            printable.document.close();
-                          }
-                        } catch (err: any) {
-                          clearInterval(interval);
-                          alert("Diagnostic reporting failed: " + err.message);
-                        } finally {
-                          setIsGeneratingReport(false);
-                          setReportProgress(0);
-                          setReportStatus("");
-                        }
-                      }}
-                      className={`w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-white shadow-lg transition-all flex items-center justify-center gap-1.5 ${isGeneratingReport ? 'bg-indigo-950/80 border border-indigo-500/30 cursor-wait text-indigo-300' : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:scale-[1.01] active:scale-95 cursor-pointer'}`}
-                    >
-                      {isGeneratingReport ? (
-                        <>
-                          <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" /> Compiling Report...
-                        </>
-                      ) : (
-                        <>
-                          <FileText className="w-4 h-4" /> Generate Printable HTML Clinical Report
-                        </>
+                      {/* Export Menu Dropdown */}
+                      {showExportMenu && (
+                        <div className="absolute right-0 bottom-full mb-2 w-full bg-[#0d0f1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-30 divide-y divide-white/5 animate-fade-in">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setShowExportMenu(false);
+                              await handleGenerateReport("html");
+                            }}
+                            className="w-full text-left px-4 py-3 text-xs font-semibold text-white hover:bg-white/5 transition-colors flex items-center gap-2 cursor-pointer"
+                          >
+                            <FileText className="w-4 h-4 text-blue-400" />
+                            <div>
+                              <p className="font-bold">Export as Printable HTML</p>
+                              <p className="text-[9px] text-white/45">Open in new tab, ready to print</p>
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setShowExportMenu(false);
+                              await handleGenerateReport("pdf");
+                            }}
+                            className="w-full text-left px-4 py-3 text-xs font-semibold text-white hover:bg-white/5 transition-colors flex items-center gap-2 cursor-pointer"
+                          >
+                            <FileCode className="w-4 h-4 text-rose-400" />
+                            <div>
+                              <p className="font-bold">Export as PDF Document</p>
+                              <p className="text-[9px] text-white/45">Trigger print-to-PDF setup</p>
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowExportMenu(false);
+                              handleExportJson();
+                            }}
+                            className="w-full text-left px-4 py-3 text-xs font-semibold text-white hover:bg-white/5 transition-colors flex items-center gap-2 cursor-pointer"
+                          >
+                            <Download className="w-4 h-4 text-amber-400" />
+                            <div>
+                              <p className="font-bold">Export as JSON Raw Data</p>
+                              <p className="text-[9px] text-white/45">Download machine-readable variant metrics</p>
+                            </div>
+                          </button>
+                        </div>
                       )}
-                    </button>
+                    </div>
 
                     {isGeneratingReport && (
                       <div className="w-full bg-white/5 border border-white/10 rounded-xl p-3 space-y-2 animate-fade-in">
@@ -1614,6 +2156,51 @@ export default function App() {
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* PubMed Articles Card */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-white/15 transition-all">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/5 mb-3">
+                    <h3 className="text-xs font-bold uppercase text-yellow-400 tracking-wider flex items-center gap-1.5">
+                      <BookOpen className="w-4 h-4 text-yellow-400" /> PubMed Literature Insights
+                    </h3>
+                    <span className="text-[9px] text-white/40 uppercase font-mono">recent articles</span>
+                  </div>
+                  
+                  {isPubmedLoading ? (
+                    <div className="flex flex-col items-center justify-center py-6 gap-2">
+                      <Loader2 className="w-5 h-5 text-yellow-500 animate-spin" />
+                      <span className="text-[10px] text-white/50 uppercase tracking-widest font-mono">Searching NCBI PubMed...</span>
+                    </div>
+                  ) : pubmedError ? (
+                    <p className="text-[10px] text-red-400 italic">Error retrieving papers: {pubmedError}</p>
+                  ) : pubmedArticles.length === 0 ? (
+                    <p className="text-[10px] text-white/40 italic">No publications found on PubMed for this variant.</p>
+                  ) : (
+                    <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                      {pubmedArticles.map((art) => (
+                        <a 
+                          key={art.pmid}
+                          href={`https://pubmed.ncbi.nlm.nih.gov/${art.pmid}/`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block bg-black/35 hover:bg-black/50 p-2.5 rounded-lg border border-white/5 hover:border-yellow-500/30 transition-all group"
+                        >
+                          <p className="text-[11px] font-bold text-white leading-normal group-hover:text-yellow-300 transition-colors line-clamp-2">
+                            {art.title}
+                          </p>
+                          <div className="flex justify-between items-center text-[9px] text-white/40 mt-1.5 font-mono">
+                            <span className="truncate max-w-[120px]">{art.authors}</span>
+                            <span className="text-yellow-400 font-bold shrink-0">PMID: {art.pmid} ↗</span>
+                          </div>
+                          <div className="flex justify-between text-[8px] text-white/35 mt-0.5 font-mono">
+                            <span>{art.source}</span>
+                            <span>{art.pubDate}</span>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
               </section>
