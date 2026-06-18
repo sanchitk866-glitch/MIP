@@ -3,6 +3,7 @@ import path from "path";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { GoogleGenAI } from "@google/genai";
+import { spawn } from "child_process";
 import { GENE_DATABASE, AMINO_ACID_PROPERTIES } from "./src/data";
 import { alignSequences, analyzeDNASequence } from "./src/aligner";
 import { PredictionResult, FeatureImpactMetrics } from "./src/types";
@@ -78,232 +79,104 @@ app.post("/api/analyze-seq", (req: Request, res: Response) => {
 
 app.post("/api/predict", async (req: Request, res: Response) => {
   try {
-    const { geneId, mutation, mutantSeq } = req.body;
-    
-    const gene = GENE_DATABASE[geneId];
-    if (!gene) {
-       res.status(404).json({ error: `Gene ${geneId} not found in knowledge base` });
-       return;
+    const { geneId, mutation } = req.body;
+    if (!geneId || !mutation) {
+      res.status(400).json({ error: "Missing geneId or mutation" });
+      return;
     }
-
-    // Parse mutation, format expected e.g., "R175H" or "c.524G>A (p.Arg175His)"
-    // Let's extract digits as position, first Letter as Wildtype, last Letter as Mutant
-    let wtAA = "";
-    let mutAA = "";
-    let residueIndex = 175; // default fallback
-
-    // Match patterns like R175H, or Arg175His, or p.Arg175His, etc
-    const simpleMatch = mutation.match(/([A-Z])(\d+)([A-Z])/i);
-    const complexMatch = mutation.match(/p\.([A-Z][a-z]{2})(\d+)([A-Z][a-z]{2})/i);
-
-    // Map 3 letter amino acid to 1 letter
-    const aa3To1: Record<string, string> = {
-      Ala: "A", Arg: "R", Asn: "N", Asp: "D", Cys: "C", Gln: "Q", Glu: "E", Gly: "G", His: "H",
-      Ile: "I", Leu: "L", Lys: "K", Met: "M", Phe: "F", Pro: "P", Ser: "S", Thr: "T", Trp: "W",
-      Tyr: "Y", Val: "V"
-    };
-
-    if (complexMatch) {
-      wtAA = aa3To1[complexMatch[1]] || "R";
-      residueIndex = parseInt(complexMatch[2], 10);
-      mutAA = aa3To1[complexMatch[3]] || "H";
-    } else if (simpleMatch) {
-      wtAA = simpleMatch[1].toUpperCase();
-      residueIndex = parseInt(simpleMatch[2], 10);
-      mutAA = simpleMatch[3].toUpperCase();
-    } else {
-      // check common mutations inside database
-      const matchedCommon = gene.commonMutations.find(m => m.mutation.toLowerCase() === mutation.toLowerCase());
-      if (matchedCommon) {
-        wtAA = matchedCommon.wtAA;
-        residueIndex = matchedCommon.residue;
-        mutAA = matchedCommon.mutAA;
-      } else {
-        // Fallback guess
-        wtAA = "R";
-        mutAA = "H";
-        residueIndex = 175;
-      }
+    const response = await fetch("http://127.0.0.1:8000/api/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ geneId, mutation })
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      res.status(response.status).json({ error: errText });
+      return;
     }
-
-    const wtAAProps = AMINO_ACID_PROPERTIES[wtAA] || { volume: 100, hydrophobicity: 0, charge: 0, polarity: 0 };
-    const mutAAProps = AMINO_ACID_PROPERTIES[mutAA] || { volume: 100, hydrophobicity: 0, charge: 0, polarity: 0 };
-
-    // Biophysical Metrics calculations
-    const volumeDiff = Math.abs(wtAAProps.volume - mutAAProps.volume);
-    const hydrophobicityDiff = Math.abs(wtAAProps.hydrophobicity - mutAAProps.hydrophobicity);
-    const chargeDiff = Math.abs(wtAAProps.charge - mutAAProps.charge);
-    const polarityDiff = Math.abs(wtAAProps.polarity - mutAAProps.polarity);
-
-    // Calculate evolutionary conservation from location mapping
-    // Essential domains are highly conserved (higher score)
-    let conservationScore = 0.5; // base
-    let isPathogenic = false;
-    let probability = 0.1;
-    let clinVarStatus = "Unclassified";
-    let clinVarId = undefined;
-
-    // Check pre-computed database matches
-    const dbMutation = gene.commonMutations.find(m => m.residue === residueIndex && m.mutAA === mutAA);
-    if (dbMutation) {
-      probability = dbMutation.probability;
-      isPathogenic = dbMutation.pathogenicity.includes("Pathogenic");
-      clinVarStatus = dbMutation.pathogenicity;
-      clinVarId = dbMutation.clinvarId;
-      conservationScore = 0.92;
-    } else {
-      // Perform automated classification metrics
-      // High volume diff, charge polarity diff at historic positions causes pathogenicity
-      let scoreSum = (volumeDiff / 150) * 0.2 + (hydrophobicityDiff / 4.5) * 0.2 + chargeDiff * 0.3 + polarityDiff * 0.2;
-      
-      // Let's factor in gene impact
-      if (geneId === "TP53" && residueIndex >= 100 && residueIndex <= 300) {
-        conservationScore = 0.95; // core DNA binding domain
-        scoreSum += 0.2;
-      } else if (geneId === "BRCA1" && residueIndex <= 100) {
-        conservationScore = 0.88; // RING finger domain
-        scoreSum += 0.25;
-      } else if (geneId === "EGFR" && residueIndex >= 700 && residueIndex <= 900) {
-        conservationScore = 0.91; // Kinase pocket
-        scoreSum += 0.15;
-      } else if (geneId === "KRAS" && residueIndex <= 100) {
-        conservationScore = 0.96; // G-domain codon loop
-        scoreSum += 0.3;
-      } else if (geneId === "PTEN" && residueIndex <= 185) {
-        conservationScore = 0.94; // Phosphatase active site
-        scoreSum += 0.25;
-      } else if (geneId === "BRAF" && residueIndex >= 450 && residueIndex <= 720) {
-        conservationScore = 0.92; // Kinase activation region
-        scoreSum += 0.25;
-      } else if (geneId === "CFTR" && residueIndex >= 380 && residueIndex <= 650) {
-        conservationScore = 0.93; // NBD1 fold region
-        scoreSum += 0.15;
-      }
-
-      probability = Math.min(Math.max(scoreSum, 0.01), 0.99);
-      isPathogenic = probability >= 0.5;
-      clinVarStatus = isPathogenic ? "Likely Pathogenic" : "Benign / Uncertain Significance";
-    }
-
-    const features: FeatureImpactMetrics = {
-      volumeDiff,
-      hydrophobicityDiff,
-      chargeDiff,
-      polarityDiff,
-      conservationScore,
-      pathogenicityScore: probability,
-    };
-
-    // AI Generation of Genetic Clinical Review
-    let aiReportText = "";
-    const ai = getGeminiClient();
-
-    if (ai) {
-      try {
-        const prompt = `You are a molecular bioinformatician analyzing a genetic variant of clinical significance.
-Analyze the following mutation detail:
-Gene: ${gene.name} (${gene.fullName})
-Uniprot ID: ${gene.uniprot}
-Mutation: ${wtAA}${residueIndex}${mutAA} (${mutation})
-Wildtype Amino Acid: ${wtAA}
-Mutant Amino Acid: ${mutAA}
-Biophysical Changes:
-- Side Chain Volume Difference: ${volumeDiff.toFixed(1)} cubic Angstroms
-- Hydrophobicity Difference: ${hydrophobicityDiff.toFixed(2)}
-- Charge Difference: ${chargeDiff.toFixed(1)}
-- Polarity Difference: ${polarityDiff.toFixed(1)}
-- Local Region Evolutionary Conservation (PhyloP): ${conservationScore.toFixed(2)}
-
-Please provide a highly professional clinical review in rich HTML format (using Tailwind CSS for nice tables, bold keywords, or responsive blocks. Do not return <html>/<body> tags, return direct container blocks).
-Specifically include:
-1. **Clinical Assessment & Mechanism of Disruption**: Explain how this specific replacement of ${wtAA} with ${mutAA} at position ${residueIndex} alters the 3D protein structure (PDB ID: ${gene.pdbId}), molecular interactions, folding, or active pocket pocket.
-2. **Pathogenicity Rationale**: Rate the evidence for Pathogenic vs Benign classification.
-3. **Database Correlation**: Relate to known data about this functional domain.
-4. **Therapeutic Recommendations / Clinical Trials**: What targeted therapies (e.g. EGFR inhibitors like Osimertinib, PARP inhibitors for BRCA1, or p53 reactivation compounds) exist, or corresponding clinical investigation routes.
-
-Keep it structured, mathematically relevant, and scientific. Use sophisticated medical terminology.`;
-
-        const response = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
-          contents: prompt,
-        });
-        aiReportText = response.text || "";
-      } catch (error: any) {
-        aiReportText = `<div class="p-4 bg-red-950/25 border border-red-900 rounded-lg text-sm">
-          <p class="font-bold text-red-400">AI Report Generation Temporarily Suspended</p>
-          <p class="text-xs text-red-300/80 mt-1">${error.message}</p>
-        </div>`;
-      }
-    }
-
-    // Default high-end rule-based clinical statement if Gemini isn't available or errored
-    if (!aiReportText) {
-      aiReportText = `
-        <div class="space-y-4 text-sm mt-2">
-          <h4 class="text-blue-400 font-bold uppercase tracking-wider text-xs">Pathogenicity Evaluation Details</h4>
-          <p>The replacement of <strong>${wtAA}</strong> with <strong>${mutAA}</strong> at residue number <strong>${residueIndex}</strong> in the core sequence of <strong>${gene.fullName}</strong> was simulated using structural biophysical matrices.</p>
-          <div class="bg-black/40 p-3 rounded border border-white/5 font-mono text-xs">
-            Volume Shift: ${volumeDiff.toFixed(1)} Å³ | 
-            Hydrophobicity Delta: ${hydrophobicityDiff.toFixed(2)} | 
-            Charge Shift: ${chargeDiff.toFixed(1)} | 
-            Polarity Delta: ${polarityDiff.toFixed(1)}
-          </div>
-          <p>
-            ${isPathogenic 
-              ? `<strong>Mechanism of Disruption:</strong> This substitution represents a critical structural variance. The difference in charge/volume at this position is highly likely to disrupt local steric packing, destabilizing protein fold geometry or critical DNA-protein/ligand interfaces, severely decreasing cell cycle regulation efficacy.` 
-              : `<strong>Mechanism of Conservation:</strong> This represents a tolerated non-deleterious variance with low charge change. The folding stability of the primary interface is predicted to be preserved.`
-            }
-          </p>
-          <p><strong>Database Correlation:</strong> Consistent with ClinVar references and structural conservation vectors. PhyoP index indicates position ${residueIndex} is under ${conservationScore > 0.8 ? "heavy selective pressure" : "moderate selective pressure"}.</p>
-        </div>
-      `;
-    }
-
-    // Custom clinical recommendations based on genes
-    let recommendedTherapies: string[] = [];
-    let affectedMotifs: string[] = [];
-    if (geneId === "TP53") {
-      recommendedTherapies = ["APR-246 (Eprenetapopt) clinical trials", "MDM2-p53 inhibitors (Nutlins)", "Gene therapy trials (Ad-p53)"];
-      affectedMotifs = ["L1/L2/L3 DNA-binding loops", "Zinc finger coordination motif"];
-    } else if (geneId === "BRCA1") {
-      recommendedTherapies = ["Olaparib (PARP inhibitor)", "Talazoparib", "Rucaparib", "Platinum-based chemistries"];
-      affectedMotifs = ["RING finger E3 ligase binding domain", "BRCT active pocket domain"];
-    } else if (geneId === "EGFR") {
-      recommendedTherapies = ["Osimertinib (3rd-gen TKI)", "Erlotinib / Gefitinib (1st-gen)", "Combination clinical trials targeting C797S resistance"];
-      affectedMotifs = ["ATP-binding pocket (P-loop)", "Activation loop (A-loop)"];
-    } else if (geneId === "KRAS") {
-      recommendedTherapies = ["Direct KRAS G12C covalent inhibitors (Sotorasib, Adagrasib)", "Downstream MEK or SHP2 co-blockade combinations", "Pan-RAS inhibitor agents"];
-      affectedMotifs = ["G-domain catalytic active pocket", "P-loop Switch binding region"];
-    } else if (geneId === "PTEN") {
-      recommendedTherapies = ["Targeted AKT pathway inhibitors (Capivasertib)", "Selective mTORC1/2 inhibitors (Everolimus)", "PI3K isoform-specific inhibitors"];
-      affectedMotifs = ["Phosphatase active catalytic center", "C2 lipid membrane docking domain"];
-    } else if (geneId === "BRAF") {
-      recommendedTherapies = ["Direct BRAF blockaders (Vemurafenib, Dabrafenib)", "Combination MEK co-inhibitors (Trametinib)", "MAPK phosphorylation loop targets"];
-      affectedMotifs = ["Protein Kinase Catalytic Center", "CR1 Ras binding motif"];
-    } else if (geneId === "CFTR") {
-      recommendedTherapies = ["CFTR gating potentiators (Ivacaftor)", "Folding correctors (Tezacaftor, Elexacaftor)", "Combination triple-therapies (Kaftrio)"];
-      affectedMotifs = ["ATP-gated chloride channel pore", "Nucleotide binding fold NBD1"];
-    }
-
-    const predictionResult: PredictionResult = {
-      gene: geneId,
-      mutation: `${wtAA}${residueIndex}${mutAA}`,
-      pdbId: gene.pdbId,
-      residueIndex,
-      isPathogenic,
-      probability,
-      features,
-      clinVarStatus,
-      clinVarId,
-      aiReport: aiReportText,
-      recommendedTherapies,
-      affectedMotifs
-    };
-
-    res.json(predictionResult);
-
+    const data = await response.json();
+    res.json(data);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: `FastAPI predictor failed: ${error.message}` });
+  }
+});
+
+app.post("/api/batch-predict-json", async (req: Request, res: Response) => {
+  try {
+    const { file_content } = req.body;
+    if (!file_content) {
+      res.status(400).json({ error: "Missing file_content parameter" });
+      return;
+    }
+    const response = await fetch("http://127.0.0.1:8000/api/batch-predict-json", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file_content })
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      res.status(response.status).json({ error: errText });
+      return;
+    }
+    const data = await response.json();
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: `FastAPI batch submit failed: ${error.message}` });
+  }
+});
+
+app.get("/api/batch-status/:jobId", async (req: Request, res: Response) => {
+  try {
+    const { jobId } = req.params;
+    const response = await fetch(`http://127.0.0.1:8000/api/batch-status/${jobId}`);
+    if (!response.ok) {
+      const errText = await response.text();
+      res.status(response.status).json({ error: errText });
+      return;
+    }
+    const data = await response.json();
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: `FastAPI batch status failed: ${error.message}` });
+  }
+});
+
+app.get("/api/benchmark-roc", async (req: Request, res: Response) => {
+  try {
+    const response = await fetch("http://127.0.0.1:8000/api/benchmark-roc");
+    if (!response.ok) {
+      const errText = await response.text();
+      res.status(response.status).json({ error: errText });
+      return;
+    }
+    const data = await response.json();
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: `FastAPI benchmark failed: ${error.message}` });
+  }
+});
+
+app.post("/api/generate-report", async (req: Request, res: Response) => {
+  try {
+    const { gene, mutation, score, classification } = req.body;
+    if (!gene || !mutation || score === undefined || !classification) {
+      res.status(400).json({ error: "Missing required parameters (gene, mutation, score, classification)" });
+      return;
+    }
+    const response = await fetch("http://127.0.0.1:8000/api/generate-report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gene, mutation, score, classification })
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      res.status(response.status).json({ error: errText });
+      return;
+    }
+    const data = await response.json();
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: `FastAPI generate-report failed: ${error.message}` });
   }
 });
 
@@ -643,8 +516,28 @@ app.get("*", (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Mutation Impact Predictor server available on port ${PORT}`);
+    
+    // Auto-spawn Python FastAPI daemon
+    console.log("Spawning Python FastAPI daemon on port 8000...");
+    const fastApiProcess = spawn("py", ["-3", "-m", "uvicorn", "app_api:app", "--port", "8000"], {
+      cwd: __dirname,
+      stdio: "inherit",
+      shell: true
+    });
+
+    fastApiProcess.on("error", (err) => {
+      console.error("Failed to start FastAPI daemon:", err);
+    });
+
+    process.on("exit", () => {
+      fastApiProcess.kill();
+    });
+    process.on("SIGINT", () => {
+      fastApiProcess.kill();
+      process.exit();
+    });
   });
 }
 

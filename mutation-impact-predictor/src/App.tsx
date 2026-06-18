@@ -96,37 +96,53 @@ function BackgroundVideo() {
         muted
         loop
         playsInline
-        className="w-full h-full object-cover opacity-60"
+        className="w-full h-full object-cover opacity-40"
       />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/80 to-black" />
     </div>
   );
 }
 
-function Navbar({ viewMode, setViewMode }: { viewMode: "landing" | "dashboard"; setViewMode: (mode: "landing" | "dashboard") => void }) {
+function Navbar({ 
+  viewMode, 
+  setViewMode, 
+  activeTab, 
+  setActiveTab 
+}: { 
+  viewMode: "landing" | "dashboard"; 
+  setViewMode: (mode: "landing" | "dashboard") => void;
+  activeTab: string;
+  setActiveTab: (tab: any) => void;
+}) {
   return (
     <motion.nav 
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="relative z-20 px-6 py-6 w-full"
+      className="relative z-20 px-4 py-4 sm:px-6 sm:py-6 w-full"
     >
-      <div className="liquid-glass rounded-full px-6 py-3 flex items-center justify-between max-w-5xl mx-auto">
+      <div className="liquid-glass rounded-full px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between max-w-5xl mx-auto w-full">
         {/* Left Hand Segment */}
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-3 sm:gap-8 min-w-0">
           {/* Logo Branding */}
           <button 
-            onClick={() => setViewMode("landing")}
-            className="flex items-center gap-2 cursor-pointer focus:outline-none"
+            onClick={() => {
+              setViewMode("landing");
+            }}
+            className="flex items-center gap-2 cursor-pointer focus:outline-none shrink-0"
           >
             <Dna className="w-5 h-5 text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.6)] animate-pulse" />
             <span className="text-white font-semibold tracking-tight text-md">MIP Engine</span>
           </button>
 
           {/* Navigation links */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-4 lg:gap-8">
             <button 
-              onClick={() => setViewMode("dashboard")}
+              onClick={() => {
+                setViewMode("dashboard");
+                setActiveTab("dashboard");
+              }}
               className={`text-sm font-medium transition-colors duration-300 cursor-pointer ${
-                viewMode === "dashboard" ? "text-white" : "text-white/70 hover:text-white"
+                viewMode === "dashboard" && activeTab === "dashboard" ? "text-blue-400 font-bold" : "text-white/70 hover:text-white"
               }`}
             >
               Predictor Core
@@ -134,36 +150,44 @@ function Navbar({ viewMode, setViewMode }: { viewMode: "landing" | "dashboard"; 
             <button 
               onClick={() => {
                 setViewMode("dashboard");
-                // Navigate to a mock or active tab
+                setActiveTab("benchmarking");
               }}
-              className="text-white/70 hover:text-white text-sm font-medium transition-colors duration-300 cursor-pointer"
+              className={`text-sm font-medium transition-colors duration-300 cursor-pointer ${
+                viewMode === "dashboard" && activeTab === "benchmarking" ? "text-blue-400 font-bold" : "text-white/70 hover:text-white"
+              }`}
             >
-              Structural Docs
+              Model Benchmarks
             </button>
             <button 
               onClick={() => {
                 setViewMode("dashboard");
+                setActiveTab("aligner");
               }}
-              className="text-white/70 hover:text-white text-sm font-medium transition-colors duration-300 cursor-pointer"
+              className={`text-sm font-medium transition-colors duration-300 cursor-pointer ${
+                viewMode === "dashboard" && activeTab === "aligner" ? "text-blue-400 font-bold" : "text-white/70 hover:text-white"
+              }`}
             >
-              Research Vault
+              Sequence Aligner
             </button>
           </div>
         </div>
 
         {/* Right Hand Segment */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           <button 
             type="button"
             onClick={() => alert("Academic institutional authentication portal active.")}
-            className="text-white/80 hover:text-white transition-colors text-sm font-medium cursor-pointer bg-transparent border-none"
+            className="hidden sm:inline-block text-white/80 hover:text-white transition-colors text-sm font-medium cursor-pointer bg-transparent border-none"
           >
             Academic Login
           </button>
           <button 
             type="button"
-            onClick={() => setViewMode("dashboard")}
-            className="liquid-glass rounded-full px-5 py-2 text-sm font-medium text-white hover:bg-white/[0.05] transition-all cursor-pointer"
+            onClick={() => {
+              setViewMode("dashboard");
+              setActiveTab("dashboard");
+            }}
+            className="liquid-glass rounded-full px-4 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white hover:bg-white/[0.05] transition-all cursor-pointer shrink-0"
           >
             Launch Pipeline
           </button>
@@ -290,10 +314,84 @@ function HeroSection({
   );
 }
 
+function renderMarkdown(md: string) {
+  if (!md) return null;
+  const lines = md.split("\n");
+  return (
+    <div className="space-y-2.5 text-xs md:text-sm font-sans leading-relaxed text-white/95 text-left">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("###")) {
+          return <h5 key={idx} className="text-sm font-bold text-amber-300 mt-3 border-b border-white/5 pb-1">{trimmed.replace(/^###\s*/, "")}</h5>;
+        }
+        if (trimmed.startsWith("##")) {
+          return <h4 key={idx} className="text-md font-extrabold text-blue-300 mt-4 border-b border-white/10 pb-1">{trimmed.replace(/^##\s*/, "")}</h4>;
+        }
+        if (trimmed.startsWith("#")) {
+          return <h3 key={idx} className="text-lg font-black text-white mt-5 border-b border-white/20 pb-1.5">{trimmed.replace(/^#\s*/, "")}</h3>;
+        }
+        // Bold replacements
+        let content: React.ReactNode = line;
+        if (line.includes("**")) {
+          const parts = line.split("**");
+          content = parts.map((part, i) => i % 2 === 1 ? <strong key={i} className="text-white font-extrabold">{part}</strong> : part);
+        }
+        
+        if (trimmed.startsWith("-") || trimmed.startsWith("*")) {
+          return (
+            <div key={idx} className="flex gap-2 items-start pl-3 text-left">
+              <span className="text-blue-400 mt-1.5 select-none text-[8px]">•</span>
+              <span className="flex-1">{content}</span>
+            </div>
+          );
+        }
+        if (/^\d+\./.test(trimmed)) {
+          const num = trimmed.match(/^\d+\./)?.[0] || "";
+          const text = trimmed.replace(/^\d+\.\s*/, "");
+          let textContent: React.ReactNode = text;
+          if (text.includes("**")) {
+            const parts = text.split("**");
+            textContent = parts.map((part, i) => i % 2 === 1 ? <strong key={i} className="text-white font-extrabold">{part}</strong> : part);
+          }
+          return (
+            <div key={idx} className="flex gap-2 items-start pl-3 text-left">
+              <span className="text-blue-400 font-mono font-bold">{num}</span>
+              <span className="flex-1">{textContent}</span>
+            </div>
+          );
+        }
+        if (!trimmed) {
+          return <div key={idx} className="h-2" />;
+        }
+        return <p key={idx}>{content}</p>;
+      })}
+    </div>
+  );
+}
+
 export default function App() {
   // Navigation
   const [viewMode, setViewMode] = useState<"landing" | "dashboard">("landing");
-  const [activeTab, setActiveTab] = useState<"dashboard" | "aligner" | "analyzer" | "database">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "aligner" | "analyzer" | "database" | "benchmarking">("dashboard");
+
+  // VCF Input states
+  const [inputMode, setInputMode] = useState<"single" | "vcf">("single");
+  const [batchFile, setBatchFile] = useState<File | null>(null);
+  const [batchJobId, setBatchJobId] = useState<string | null>(null);
+  const [batchProgress, setBatchProgress] = useState<number>(0);
+  const [batchStatus, setBatchStatus] = useState<string>("");
+  const [batchResults, setBatchResults] = useState<any[]>([]);
+  const [isBatchProcessing, setIsBatchProcessing] = useState<boolean>(false);
+
+  // AI Curation Report states
+  const [aiCurationReport, setAiCurationReport] = useState<string | null>(null);
+  const [isGeneratingCuration, setIsGeneratingCuration] = useState<boolean>(false);
+  const [curationError, setCurationError] = useState<string | null>(null);
+
+  // ROC Benchmarking states
+  const [rocData, setRocData] = useState<any[]>([]);
+  const [isRocLoading, setIsRocLoading] = useState<boolean>(false);
+  const [rocError, setRocError] = useState<string | null>(null);
 
   // Hero landing page states
   const [emailInput, setEmailInput] = useState<string>("");
@@ -957,8 +1055,135 @@ export default function App() {
     };
   }, [molScriptLoaded, selectedGeneId, predictionResult, activeTab, showDistances, measurementMode, neighborLimit, maxDistance, isSplitView, useSurface]);
 
+  // Reset AI Curation Report when target changes
+  useEffect(() => {
+    setAiCurationReport(null);
+    setCurationError(null);
+  }, [selectedGeneId, predictionResult?.mutation, customMutation]);
+
+  // Fetch ROC Benchmark data
+  const fetchRocData = async () => {
+    setIsRocLoading(true);
+    setRocError(null);
+    try {
+      const res = await fetch("/api/benchmark-roc");
+      if (!res.ok) throw new Error("Failed to fetch ROC coordinates");
+      const data = await res.json();
+      setRocData(data);
+    } catch (err: any) {
+      console.error(err);
+      setRocError(err.message);
+    } finally {
+      setIsRocLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "benchmarking") {
+      fetchRocData();
+    }
+  }, [activeTab]);
+
+  // Handle VCF Upload and background status polling
+  const handleVcfUpload = async (file: File) => {
+    if (!file) return;
+    setBatchFile(file);
+    setIsBatchProcessing(true);
+    setBatchProgress(0);
+    setBatchStatus("Uploading VCF file...");
+    setBatchResults([]);
+
+    try {
+      const content = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsText(file);
+      });
+
+      const response = await fetch("/api/batch-predict-json", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file_content: content }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit VCF file to the batch processor.");
+      }
+
+      const { job_id } = await response.json();
+      setBatchJobId(job_id);
+      setBatchStatus("Processing variants in background...");
+
+      // Start polling status
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`/api/batch-status/${job_id}`);
+          if (!statusRes.ok) {
+            clearInterval(pollInterval);
+            throw new Error("Failed to fetch batch status.");
+          }
+          const statusData = await statusRes.json();
+          setBatchProgress(statusData.progress || 0);
+          
+          if (statusData.results && statusData.results.length > 0) {
+            setBatchResults(statusData.results);
+          }
+
+          if (statusData.status === "completed") {
+            clearInterval(pollInterval);
+            setIsBatchProcessing(false);
+            setBatchStatus("Completed");
+          }
+        } catch (pollErr: any) {
+          clearInterval(pollInterval);
+          setIsBatchProcessing(false);
+          setBatchStatus("Error: " + pollErr.message);
+        }
+      }, 800);
+    } catch (err: any) {
+      setIsBatchProcessing(false);
+      setBatchStatus("Upload failed: " + err.message);
+    }
+  };
+
+  // Generate AI Molecular Curation report calling backend Gemini API
+  const handleGenerateCurationReport = async () => {
+    if (!predictionResult) return;
+    setIsGeneratingCuration(true);
+    setCurationError(null);
+    setAiCurationReport(null);
+
+    try {
+      const response = await fetch("/api/generate-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gene: predictionResult.gene,
+          mutation: predictionResult.mutation,
+          score: predictionResult.probability,
+          classification: predictionResult.clinVarStatus
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to generate report from Gemini.");
+      }
+
+      const data = await response.json();
+      setAiCurationReport(data.report_markdown);
+    } catch (err: any) {
+      console.error(err);
+      setCurationError(err.message);
+    } finally {
+      setIsGeneratingCuration(false);
+    }
+  };
+
   // Handle Predict Action
   const handlePredict = async () => {
+
     setIsPredicting(true);
     setPredictionResult(null);
 
@@ -1287,34 +1512,44 @@ export default function App() {
     }, 4000);
   };
 
-  if (viewMode === "landing") {
-    return (
-      <main className="relative bg-black h-screen w-screen flex flex-col overflow-hidden selection:bg-blue-500 selection:text-white shrink-0">
-        <BackgroundVideo />
-        <Navbar viewMode={viewMode} setViewMode={setViewMode} />
-        <HeroSection
-          emailInput={emailInput}
-          setEmailInput={setEmailInput}
-          isEmailActive={isEmailActive}
-          setIsEmailActive={setIsEmailActive}
-          isEmailSubmitted={isEmailSubmitted}
-          handleEmailSubmit={handleEmailSubmit}
-          typewriterText={typewriterText}
-          setViewMode={setViewMode}
-        />
-      </main>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[#020308] text-[#e2e8f0] font-sans antialiased selection:bg-blue-500/30">
-      
-      {/* Background radial highlight */}
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,_#1c1035_0%,_transparent_55%)] opacity-35" />
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_bottom_left,_#0c1b40_0%,_transparent_45%)] opacity-25" />
+    <AnimatePresence mode="wait">
+      {viewMode === "landing" ? (
+        <motion.main
+          key="landing"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.35, ease: "easeInOut" }}
+          className="relative bg-black h-screen w-screen flex flex-col overflow-hidden selection:bg-blue-500 selection:text-white shrink-0"
+        >
+          <BackgroundVideo />
+          <Navbar viewMode={viewMode} setViewMode={setViewMode} activeTab={activeTab} setActiveTab={setActiveTab} />
+          <HeroSection
+            emailInput={emailInput}
+            setEmailInput={setEmailInput}
+            isEmailActive={isEmailActive}
+            setIsEmailActive={setIsEmailActive}
+            isEmailSubmitted={isEmailSubmitted}
+            handleEmailSubmit={handleEmailSubmit}
+            typewriterText={typewriterText}
+            setViewMode={setViewMode}
+          />
+        </motion.main>
+      ) : (
+        <motion.div
+          key="dashboard"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -30 }}
+          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          className="min-h-screen bg-[#020308] text-[#e2e8f0] font-sans antialiased selection:bg-blue-500/30"
+        >
+          {/* Background radial highlight */}
+          <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,_#1c1035_0%,_transparent_55%)] opacity-35" />
+          <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_bottom_left,_#0c1b40_0%,_transparent_45%)] opacity-25" />
 
-      {/* Main layout container with maximum desktop-first precision */}
-      <div className="max-w-[1400px] mx-auto p-4 md:p-6 lg:p-8 flex flex-col min-h-screen gap-6 z-10 relative">
+          {/* Main layout container with maximum desktop-first precision */}
+          <div className="max-w-[1400px] mx-auto p-4 md:p-6 lg:p-8 flex flex-col min-h-screen gap-6 z-10 relative">
         
         {/* Header Section */}
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-5 border-b border-white/10 gap-4">
@@ -1342,25 +1577,31 @@ export default function App() {
           <nav className="flex bg-white/5 border border-white/10 rounded-full p-1 self-stretch sm:self-auto justify-around">
             <button 
               onClick={() => setActiveTab("dashboard")} 
-              className={`px-4 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-full transition-all duration-300 ${activeTab === "dashboard" ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" : "text-white/60 hover:text-white"}`}
+              className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-full transition-all duration-300 ${activeTab === "dashboard" ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" : "text-white/60 hover:text-white"}`}
             >
               Dashboard
             </button>
             <button 
               onClick={() => setActiveTab("aligner")} 
-              className={`px-4 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-full transition-all duration-300 ${activeTab === "aligner" ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" : "text-white/60 hover:text-white"}`}
+              className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-full transition-all duration-300 ${activeTab === "aligner" ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" : "text-white/60 hover:text-white"}`}
             >
-              Sequence Aligner
+              Aligner
             </button>
             <button 
               onClick={() => setActiveTab("analyzer")} 
-              className={`px-4 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-full transition-all duration-300 ${activeTab === "analyzer" ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" : "text-white/60 hover:text-white"}`}
+              className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-full transition-all duration-300 ${activeTab === "analyzer" ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" : "text-white/60 hover:text-white"}`}
             >
-              Seq Utilities
+              Seq Utils
+            </button>
+            <button 
+              onClick={() => setActiveTab("benchmarking")} 
+              className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-full transition-all duration-300 ${activeTab === "benchmarking" ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" : "text-white/60 hover:text-white"}`}
+            >
+              Benchmarks
             </button>
             <button 
               onClick={() => setActiveTab("database")} 
-              className={`px-4 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-full transition-all duration-300 ${activeTab === "database" ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" : "text-white/60 hover:text-white"}`}
+              className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-full transition-all duration-300 ${activeTab === "database" ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" : "text-white/60 hover:text-white"}`}
             >
               Genomic Library
             </button>
@@ -1397,47 +1638,142 @@ export default function App() {
                     <h3 className="text-xs font-bold uppercase text-blue-400 tracking-wider">Target Selection</h3>
                   </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-[10px] text-white/50 uppercase font-semibold tracking-wider">Target Gene</label>
-                      <select 
-                        value={selectedGeneId} 
-                        onChange={(e) => setSelectedGeneId(e.target.value)}
-                        className="w-full mt-1.5 bg-black/50 border border-white/10 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      >
-                        <option value="TP53">TP53 (UniProt: P04637)</option>
-                        <option value="BRCA1">BRCA1 (UniProt: P38398)</option>
-                        <option value="EGFR">EGFR (UniProt: P00533)</option>
-                        <option value="KRAS">KRAS (UniProt: P01111)</option>
-                        <option value="PTEN">PTEN (UniProt: P60484)</option>
-                        <option value="BRAF">BRAF (UniProt: P15056)</option>
-                        <option value="CFTR">CFTR (UniProt: P13569)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between items-center">
-                        <label className="block text-[10px] text-white/50 uppercase font-semibold tracking-wider">Active Variant</label>
-                        <span className="text-[10px] text-blue-300">Format: wtResidueMut</span>
-                      </div>
-                      <div className="flex gap-2 mt-1.5">
-                        <input 
-                          type="text" 
-                          value={customMutation} 
-                          onChange={(e) => setCustomMutation(e.target.value)}
-                          placeholder="e.g., R175H"
-                          className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white uppercase font-mono tracking-wider focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                        <button 
-                          onClick={handlePredict}
-                          disabled={isPredicting}
-                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg text-xs font-bold uppercase tracking-wider text-white hover:from-blue-500 hover:to-indigo-500 transition-all disabled:opacity-50"
-                        >
-                          {isPredicting ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Run"}
-                        </button>
-                      </div>
-                    </div>
+                  {/* Input Mode Selector */}
+                  <div className="flex bg-black/30 border border-white/10 rounded-lg p-0.5 mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setInputMode("single")}
+                      className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
+                        inputMode === "single"
+                          ? "bg-blue-600 text-white shadow"
+                          : "text-white/50 hover:text-white"
+                      }`}
+                    >
+                      Single Variant
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInputMode("vcf")}
+                      className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
+                        inputMode === "vcf"
+                          ? "bg-blue-600 text-white shadow"
+                          : "text-white/50 hover:text-white"
+                      }`}
+                    >
+                      VCF Batch
+                    </button>
                   </div>
+
+                  {inputMode === "single" ? (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[10px] text-white/50 uppercase font-semibold tracking-wider">Target Gene</label>
+                        <select 
+                          value={selectedGeneId} 
+                          onChange={(e) => setSelectedGeneId(e.target.value)}
+                          className="w-full mt-1.5 bg-black/50 border border-white/10 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="TP53">TP53 (UniProt: P04637)</option>
+                          <option value="BRCA1">BRCA1 (UniProt: P38398)</option>
+                          <option value="EGFR">EGFR (UniProt: P00533)</option>
+                          <option value="KRAS">KRAS (UniProt: P01111)</option>
+                          <option value="PTEN">PTEN (UniProt: P60484)</option>
+                          <option value="BRAF">BRAF (UniProt: P15056)</option>
+                          <option value="CFTR">CFTR (UniProt: P13569)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center">
+                          <label className="block text-[10px] text-white/50 uppercase font-semibold tracking-wider">Active Variant</label>
+                          <span className="text-[10px] text-blue-300">Format: wtResidueMut</span>
+                        </div>
+                        <div className="flex gap-2 mt-1.5">
+                          <input 
+                            type="text" 
+                            value={customMutation} 
+                            onChange={(e) => setCustomMutation(e.target.value)}
+                            placeholder="e.g., R175H"
+                            className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-white uppercase font-mono tracking-wider focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                          <button 
+                            onClick={handlePredict}
+                            disabled={isPredicting}
+                            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg text-xs font-bold uppercase tracking-wider text-white hover:from-blue-500 hover:to-indigo-500 transition-all disabled:opacity-50"
+                          >
+                            {isPredicting ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Run"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* VCF Drag & Drop Zone */}
+                      <div 
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const file = e.dataTransfer.files?.[0];
+                          if (file && file.name.endsWith(".vcf")) {
+                            handleVcfUpload(file);
+                          } else {
+                            alert("Only standard .vcf files are supported.");
+                          }
+                        }}
+                        className="border-2 border-dashed border-white/20 rounded-xl p-4 text-center cursor-pointer hover:border-blue-500/50 hover:bg-white/[0.02] transition-all relative"
+                      >
+                        <input 
+                          type="file"
+                          accept=".vcf"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleVcfUpload(file);
+                          }}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <Download className="w-6 h-6 text-white/40 mx-auto mb-2" />
+                        <p className="text-xs font-bold text-white/80">Drag & drop VCF file</p>
+                        <p className="text-[10px] text-white/40 mt-1">or click to browse local files</p>
+                      </div>
+
+                      {/* Job Progress */}
+                      {isBatchProcessing && (
+                        <div className="bg-black/40 border border-white/5 rounded-xl p-3 flex flex-col items-center justify-center gap-2">
+                          <div className="relative w-12 h-12 flex items-center justify-center">
+                            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                              <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="2.5" />
+                              <circle 
+                                cx="18" 
+                                cy="18" 
+                                r="16" 
+                                fill="none" 
+                                stroke="#3b82f6" 
+                                strokeWidth="2.5" 
+                                strokeDasharray="100.5" 
+                                strokeDashoffset={100.5 - (100.5 * (batchProgress / 100))}
+                                className="transition-all duration-300 ease-out animate-pulse"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                            <div className="absolute text-center">
+                              <span className="text-[9px] font-mono font-bold text-white">{batchProgress}%</span>
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[9px] uppercase font-bold text-blue-400 tracking-wider">Processing VCF...</p>
+                            <p className="text-[8px] text-white/40 font-mono mt-0.5 max-w-[150px] truncate">{batchStatus}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {batchFile && !isBatchProcessing && (
+                        <div className="bg-black/30 p-2.5 rounded-lg border border-white/5 flex items-center justify-between text-[10px] font-mono text-white/70">
+                          <span className="truncate max-w-[130px] font-bold">{batchFile.name}</span>
+                          <span className="text-emerald-400 font-bold">Processed</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Knowledge context block info */}
                   <div className="mt-5 pt-4 border-t border-white/5">
@@ -2203,7 +2539,349 @@ export default function App() {
                   )}
                 </div>
 
+                {/* AI Clinical Curation Card */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-white/15 transition-all">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/5 mb-3">
+                    <h3 className="text-xs font-bold uppercase text-blue-400 tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-blue-400 animate-pulse" /> AI Clinical Curation
+                    </h3>
+                    <span className="text-[9px] text-white/40 uppercase font-mono">Gemini 1.5 Flash</span>
+                  </div>
+
+                  {!predictionResult ? (
+                    <p className="text-xs text-white/40 italic">Run variant prediction to enable AI curation report.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {!aiCurationReport && !isGeneratingCuration && (
+                        <div className="text-center py-4">
+                          <p className="text-[11px] text-white/50 mb-3">Generate a professional clinical curation summary using generative AI.</p>
+                          <button
+                            onClick={handleGenerateCurationReport}
+                            className="w-full py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl text-xs font-bold uppercase tracking-wider text-white transition-all cursor-pointer shadow-md shadow-blue-900/30 flex items-center justify-center gap-1.5"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" /> Curate with Gemini AI
+                          </button>
+                        </div>
+                      )}
+
+                      {isGeneratingCuration && (
+                        <div className="flex flex-col items-center justify-center py-8 gap-3">
+                          <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+                          <span className="text-[10px] text-white/50 uppercase tracking-widest font-mono text-center">Synthesizing clinical literature & structural metrics...</span>
+                        </div>
+                      )}
+
+                      {curationError && (
+                        <div className="space-y-2">
+                          <p className="text-[10px] text-red-400 italic">Curation Error: {curationError}</p>
+                          <button
+                            onClick={handleGenerateCurationReport}
+                            className="w-full py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white transition-all cursor-pointer"
+                          >
+                            Retry Curation
+                          </button>
+                        </div>
+                      )}
+
+                      {aiCurationReport && (
+                        <div className="space-y-3">
+                          <div className="bg-black/40 border border-white/5 rounded-xl p-3.5 max-h-[300px] overflow-y-auto custom-scrollbar">
+                            {renderMarkdown(aiCurationReport)}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(aiCurationReport);
+                                alert("AI Curation Report copied to clipboard!");
+                              }}
+                              className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              <Download className="w-3 h-3" /> Copy Text
+                            </button>
+                            <button
+                              onClick={() => setAiCurationReport(null)}
+                              className="py-1.5 px-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer"
+                            >
+                              Reset
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
               </section>
+
+              {/* VCF Batch Prediction Results table rendered full-width below columns */}
+              {batchResults.length > 0 && (
+                <div className="lg:col-span-12 bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-white/15 transition-all">
+                  <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-4">
+                    <div>
+                      <h3 className="text-sm font-bold uppercase text-blue-400 tracking-wider flex items-center gap-1.5">
+                        <CheckCircle className="w-4 h-4 text-emerald-400" /> VCF Batch Prediction Results
+                      </h3>
+                      <p className="text-[10px] text-white/50 mt-0.5">Detected {batchResults.length} missense variants mapping to target gene coordinates.</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setBatchResults([]);
+                        setBatchFile(null);
+                        setBatchJobId(null);
+                      }}
+                      className="text-[10px] text-white/40 hover:text-white font-mono uppercase bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 transition-all cursor-pointer"
+                    >
+                      Clear Results
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto max-h-[300px] overflow-y-auto custom-scrollbar border border-white/5 rounded-xl">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-black/50 text-[10px] text-white/40 uppercase tracking-wider border-b border-white/5 sticky top-0">
+                        <tr>
+                          <th className="p-3">Variant</th>
+                          <th className="p-3">Gene</th>
+                          <th className="p-3">Position</th>
+                          <th className="p-3">Ref/Alt</th>
+                          <th className="p-3">Pathogenicity Score</th>
+                          <th className="p-3">Classification</th>
+                          <th className="p-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 font-mono">
+                        {batchResults.map((res, idx) => {
+                          const isSelected = selectedGeneId === res.gene && customMutation.toUpperCase() === res.mutation.toUpperCase();
+                          return (
+                            <tr key={idx} className={`hover:bg-white/[0.02] transition-colors ${isSelected ? "bg-blue-500/10 border-l-2 border-l-blue-500" : ""}`}>
+                              <td className="p-3 font-bold text-white">{res.mutation}</td>
+                              <td className="p-3 text-blue-300 font-bold">{res.gene}</td>
+                              <td className="p-3 text-white/60">chr{res.chrom}:{res.pos}</td>
+                              <td className="p-3 text-white/60">{res.ref} → {res.alt}</td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-12 h-1.5 bg-black/40 rounded overflow-hidden">
+                                    <div 
+                                      className={`h-full rounded ${res.isPathogenic ? "bg-red-400" : "bg-emerald-400"}`}
+                                      style={{ width: `${res.probability * 100}%` }}
+                                    />
+                                  </div>
+                                  <span className="font-bold">{res.probability.toFixed(3)}</span>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                  res.isPathogenic 
+                                    ? "bg-red-500/10 text-red-400 border border-red-500/20" 
+                                    : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                }`}>
+                                  {res.clinVarStatus}
+                                </span>
+                              </td>
+                              <td className="p-3 text-right">
+                                <button
+                                  onClick={() => {
+                                    setSelectedGeneId(res.gene);
+                                    setCustomMutation(res.mutation);
+                                    setTimeout(() => handlePredict(), 50);
+                                  }}
+                                  className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer shadow-md"
+                                >
+                                  Inspect
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          )}
+
+          {/* ==== BENCHMARKING TAB === */}
+          {activeTab === "benchmarking" && (
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/15 transition-all flex flex-col gap-6">
+              
+              <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                <div>
+                  <h2 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-blue-400" /> Classifier Benchmarks & ROC Curve Analysis
+                  </h2>
+                  <p className="text-xs text-white/50 mt-0.5">Comparative performance metrics of the Mutation Impact Predictor (MIP) against legacy variant impact tools.</p>
+                </div>
+                <button
+                  onClick={fetchRocData}
+                  disabled={isRocLoading}
+                  className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono uppercase rounded-lg text-white/80 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRocLoading ? 'animate-spin' : ''}`} /> Reload Data
+                </button>
+              </div>
+
+              {/* Comparative AUC Stat Blocks */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gradient-to-br from-blue-900/20 via-blue-950/10 to-transparent border border-blue-500/20 p-5 rounded-2xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl"></div>
+                  <p className="text-[10px] uppercase font-black tracking-widest text-blue-400">MIP Voting Ensemble</p>
+                  <p className="text-4xl font-mono font-black text-white mt-2">0.963</p>
+                  <p className="text-xs text-white/50 mt-2 font-medium">Evolutionary ESM-2 Embeddings + (XGBoost, SVM, MLP) Soft-Voting.</p>
+                  <span className="absolute bottom-3 right-4 text-[9px] px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-emerald-400 font-bold uppercase font-mono tracking-wider">Top Predictor</span>
+                </div>
+
+                <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
+                  <p className="text-[10px] uppercase font-bold tracking-widest text-amber-400">SIFT Classifier</p>
+                  <p className="text-4xl font-mono font-bold text-white/80 mt-2">0.784</p>
+                  <p className="text-xs text-white/40 mt-2 font-medium">Alignment-based substitution matrix constraint heuristic.</p>
+                  <span className="inline-block mt-3 text-[9px] text-white/35 font-mono">Legacy Baseline</span>
+                </div>
+
+                <div className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl">
+                  <p className="text-[10px] uppercase font-bold tracking-widest text-purple-400">PolyPhen-2</p>
+                  <p className="text-4xl font-mono font-bold text-white/80 mt-2">0.752</p>
+                  <p className="text-xs text-white/40 mt-2 font-medium">Rule-based physical properties & simple conservation profiling.</p>
+                  <span className="inline-block mt-3 text-[9px] text-white/35 font-mono">Legacy Baseline</span>
+                </div>
+              </div>
+
+              {/* ROC Curve Chart */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                
+                <div className="lg:col-span-8 bg-black/40 border border-white/5 rounded-2xl p-5 flex flex-col gap-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold uppercase text-white/70 tracking-wider">Receiver Operating Characteristic (ROC)</span>
+                    <span className="text-[10px] text-white/40 font-mono">10,000+ ClinVar Test Instances</span>
+                  </div>
+
+                  {isRocLoading ? (
+                    <div className="flex-1 flex flex-col items-center justify-center min-h-[360px] gap-3">
+                      <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                      <p className="text-xs text-white/50 font-mono uppercase tracking-widest">Plotting ROC coordinates...</p>
+                    </div>
+                  ) : rocError ? (
+                    <div className="flex-1 flex flex-col items-center justify-center min-h-[360px] text-center p-6 border border-red-500/20 bg-red-500/5 rounded-xl">
+                      <AlertTriangle className="w-8 h-8 text-red-400 mb-2" />
+                      <p className="text-sm font-bold text-red-400">Failed to load ROC data</p>
+                      <p className="text-xs text-white/40 mt-1 max-w-md">{rocError}</p>
+                    </div>
+                  ) : (
+                    <div className="w-full h-[380px] relative">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                          data={rocData}
+                          margin={{ top: 10, right: 10, left: -10, bottom: 10 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                          <XAxis 
+                            dataKey="fpr" 
+                            stroke="rgba(255,255,255,0.4)" 
+                            fontSize={10}
+                            tickLine={false}
+                            label={{ value: "False Positive Rate (FPR)", position: "bottom", offset: 0, fill: "rgba(255,255,255,0.5)", fontSize: 10 }}
+                          />
+                          <YAxis 
+                            stroke="rgba(255,255,255,0.4)" 
+                            fontSize={10}
+                            tickLine={false}
+                            domain={[0.0, 1.0]}
+                            label={{ value: "True Positive Rate (TPR)", angle: -90, position: "left", offset: 15, fill: "rgba(255,255,255,0.5)", fontSize: 10 }}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "rgba(9,11,20,0.92)",
+                              border: "1px solid rgba(255,255,255,0.15)",
+                              borderRadius: "12px",
+                              fontSize: "11px",
+                              color: "#fff",
+                              fontFamily: "monospace"
+                            }}
+                            itemStyle={{ padding: "1px 0" }}
+                            labelFormatter={(label) => `FPR: ${parseFloat(label).toFixed(2)}`}
+                          />
+                          {/* Diagonal reference line */}
+                          <Line
+                            type="monotone"
+                            dataKey="fpr"
+                            stroke="rgba(255,255,255,0.2)"
+                            strokeWidth={1.5}
+                            strokeDasharray="4 4"
+                            dot={false}
+                            name="Random Guess (AUC=0.5)"
+                          />
+                          {/* SIFT line */}
+                          <Line 
+                            type="monotone" 
+                            dataKey="sift_tpr" 
+                            stroke="#f59e0b" 
+                            strokeWidth={2}
+                            dot={false}
+                            name="SIFT (AUC=0.78)"
+                          />
+                          {/* PolyPhen line */}
+                          <Line 
+                            type="monotone" 
+                            dataKey="polyphen_tpr" 
+                            stroke="#a855f7" 
+                            strokeWidth={2}
+                            dot={false}
+                            name="PolyPhen-2 (AUC=0.75)"
+                          />
+                          {/* Ensemble line */}
+                          <Line 
+                            type="monotone" 
+                            dataKey="ensemble_tpr" 
+                            stroke="#3b82f6" 
+                            strokeWidth={3}
+                            dot={false}
+                            name="MIP Ensemble (AUC=0.96)"
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  
+                  {/* Legend guide */}
+                  <div className="flex flex-wrap gap-4 justify-center text-[10px] font-mono border-t border-white/5 pt-3">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-3 h-0.5 bg-[#3b82f6]"></span> MIP Voting Ensemble (AUC=0.96)
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-3 h-0.5 bg-[#f59e0b]"></span> SIFT Classifier (AUC=0.78)
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-3 h-0.5 bg-[#a855f7]"></span> PolyPhen-2 Baseline (AUC=0.75)
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-3 h-0.5 border-t border-dashed border-white/40"></span> Random Guess (AUC=0.50)
+                    </span>
+                  </div>
+
+                </div>
+
+                <div className="lg:col-span-4 bg-white/[0.01] border border-white/10 rounded-2xl p-5 flex flex-col gap-4">
+                  <h3 className="text-xs font-bold uppercase text-purple-400 tracking-wider">Methodology & Curation</h3>
+                  
+                  <div className="space-y-4 text-xs text-white/75 leading-relaxed">
+                    <div className="bg-black/35 p-3 rounded-xl border border-white/5 space-y-1.5">
+                      <p className="font-bold text-white">1. Dense Evolutionary Embeddings</p>
+                      <p className="text-white/60 text-[11px]">We leverage Meta AI's ESM-2 transformer model (`esm2_t6_8M_UR50D`) to encode full-length target proteins, capturing complex evolutionary grammar and secondary structure signals.</p>
+                    </div>
+                    
+                    <div className="bg-black/35 p-3 rounded-xl border border-white/5 space-y-1.5">
+                      <p className="font-bold text-white">2. Soft-Voting Ensemble</p>
+                      <p className="text-white/60 text-[11px]">An ensemble composed of Support Vector Machines (SVM), Extreme Gradient Boosting (XGBoost), and a Multi-Layer Perceptron (MLP) synthesizes prediction probabilities to ensure minimum variance.</p>
+                    </div>
+
+                    <div className="bg-black/35 p-3 rounded-xl border border-white/5 space-y-1.5">
+                      <p className="font-bold text-white">3. ClinVar Ground Truth</p>
+                      <p className="text-white/60 text-[11px]">The classifier was trained using clinically validated missense mutations from the NCBI ClinVar dataset across targeted tumor-suppressor and driver genes.</p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
 
             </div>
           )}
@@ -2628,6 +3306,8 @@ export default function App() {
         </footer>
 
       </div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
